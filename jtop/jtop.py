@@ -569,6 +569,96 @@ class jtop(Thread):
         return stats
 
     @property
+    def m_stats(self):
+        """
+        This property return a customized version of tegrastats,
+        It measures stats related to cpu, gpu usage and power consumption.
+        it is simple to use if you want log the NVIDIA Jetson status with pandas or in a csv file.
+
+        This property is a simplified version of all data collected from your NVIDIA Jetson,
+        if you need more detailed information, please use the other jtop properties
+
+        The field listed are:
+
+        * **time** - A `datetime` variable with the local time in your board
+        * **uptime** - A `timedelta` with the up time of your board, same from :func:`~jtop.jtop.jtop.uptime`
+        * **jetson_clocks** - Status of jetson_clocks, human readable :func:`~jtop.jtop.jtop.jetson_clocks`
+        * **nvp model** - If exist, the NV Power Model name active :func:`~jtop.jtop.jtop.nvpmodel`
+        * **cpu X** - The status for each cpu in your board, if disabled you will read *OFF*
+        * **GPU** - Status of your GPU :func:`~jtop.jtop.jtop.gpu`
+        * **MTS FG** - Foreground tasks :func:`~jtop.jtop.jtop.mts`
+        * **MTS BG** - Background tasks :func:`~jtop.jtop.jtop.mts`
+        * **RAM** - Used ram :func:`~jtop.jtop.jtop.ram`
+        * **EMC** - If exist, the used emc :func:`~jtop.jtop.jtop.emc`
+        * **IRAM** - If exist, the used iram :func:`~jtop.jtop.jtop.iram`
+        * **SWAP** - If exist, the used swap :func:`~jtop.jtop.jtop.swap`
+        * **APE** - Frequency APE engine :func:`~jtop.jtop.jtop.engine`
+        * **NVENC** - Frequency NVENC engine :func:`~jtop.jtop.jtop.engine`
+        * **NVDEC** - Frequency NVDEC engine :func:`~jtop.jtop.jtop.engine`
+        * **NVJPG** - Frequency NVJPG engine :func:`~jtop.jtop.jtop.engine`
+        * **fan** - Status fan speed :func:`~jtop.jtop.jtop.fan`
+        * **Temp X** - X temperature :func:`~jtop.jtop.jtop.temperature`
+        * **power cur** - Total current power :func:`~jtop.jtop.jtop.power`
+        * **power avg** - Total average power :func:`~jtop.jtop.jtop.power`
+        * **gpu power cur** - Total current power :func:`~jtop.jtop.jtop.power`
+        * **gpu power avg** - Total average power :func:`~jtop.jtop.jtop.power`
+        * **cpu power cur** - Total current power :func:`~jtop.jtop.jtop.power`
+        * **cpu power avg** - Total average power :func:`~jtop.jtop.jtop.power`
+
+        :return: Compacts jetson statistics
+        :rtype: dict
+        """
+        stats = {'time': datetime.now(), 'uptime': self.uptime}
+        # -- jetson_clocks --
+        if self.jetson_clocks is not None:
+            stats['jetson_clocks'] = 'ON' if self.jetson_clocks else 'OFF'
+        # -- NV Power Model --
+        if self.nvpmodel is not None:
+            stats['nvp model'] = self.nvpmodel.name
+        # -- CPU --
+        for cpu in sorted(self.cpu):
+            stats[cpu] = self.cpu[cpu].get('val', 'OFF')
+        # -- GPU --
+        stats['GPU'] = self.gpu['val']
+        # -- MTS --
+        if self.mts:
+            stats['MTS FG'] = self.mts['fg']
+            stats['MTS BG'] = self.mts['bg']
+        # -- RAM --
+        stats['RAM'] = self.ram['use']
+        # -- EMC --
+        if self.emc:
+            stats['EMC'] = self.ram['use']
+        # -- IRAM --
+        if self.iram:
+            stats['IRAM'] = self.ram['use']
+        # -- SWAP --
+        if 'use' in self.swap:
+            stats['SWAP'] = self.swap['use']
+        # -- Engines --
+        stats['APE'] = self.engine.ape['val']
+        stats['NVENC'] = self.engine.nvenc['val'] if self.engine.nvenc else 'OFF'
+        stats['NVDEC'] = self.engine.nvdec['val'] if self.engine.nvdec else 'OFF'
+        stats['NVJPG'] = self.engine.nvjpg['rate'] if self.engine.nvjpg else 'OFF'
+        if self.engine.msenc:
+            stats['MSENC'] = self.engine.msenc
+        # -- FAN --
+        if self.fan:
+            stats['fan'] = self.fan.measure
+        # -- Temperature --
+        for temp in sorted(self.temperature):
+            stats["Temp {name}".format(name=temp)] = self.temperature[temp]
+        # -- Power --
+        total, power = self.power
+        stats['power cur'] = total['cur']
+        stats['power avg'] = total['avg']
+        stats['gpu power cur'] = power['5V GPU']['cur']
+        stats['gpu power avg'] = power['5V GPU']['avg']
+        stats['cpu power cur'] = power['5V CPU']['cur']
+        stats['cpu power avg'] = power['5V CPU']['avg']
+        return stats
+
+    @property
     def swap(self):
         """
         SWAP manager and reader
